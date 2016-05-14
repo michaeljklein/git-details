@@ -2,7 +2,7 @@
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lib where
+module Git.Details where
 
 import Control.Applicative (Alternative(..), many)
 import Control.Monad
@@ -26,7 +26,6 @@ import Data.List.Split (Splitter, keepDelimsL, split, whenElt)
 import Data.Text.IO (readFile)
 import Data.Text.Read (decimal)
 -- import Data.Time.Calendar (Day(..), fromGregorian)
-import Data.Time.Clock (UTCTime(..), secondsToDiffTime)
 import Data.Tree (Tree(..), Forest, unfoldForest)
 import Prelude hiding (readFile)
 import System.Directory
@@ -35,6 +34,8 @@ import System.Process
 import TextShow
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
+
+import Git.Commit
 
 -- 1. make sure valid git dir (has .git dir)
 -- 2. get project details: 'git remote show origin'
