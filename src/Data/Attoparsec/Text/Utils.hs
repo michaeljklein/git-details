@@ -1,9 +1,18 @@
 module Data.Attoparsec.Text.Utils where
 
-import Control.Monad (replicateM_)
-import Data.Attoparsec.Text (Parser, skip, takeTill, isEndOfLine)
-import Data.Text (Text)
-import Data.Text.Read (decimal)
+import Control.Monad        ( replicateM_
+                            )
+import Data.Attoparsec.Text ( Parser
+                            , isEndOfLine
+                            , satisfyWith
+                            , skip
+                            , takeTill
+                            )
+import Data.Text            ( Text
+                            )
+import Data.Text.Read       ( decimal
+                            )
+
 
 -- | Skip any char
 skipChar :: Parser ()
@@ -35,4 +44,8 @@ unsafeDecimal :: Integral a => Text -> a
 unsafeDecimal x = case decimal x of
                     Right (y, _) -> y
                     Left _       -> 0
+
+-- | Fail a parse unconditionally
+failParse :: Parser a
+failParse = satisfyWith (const undefined) (const False)
 
