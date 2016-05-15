@@ -4,38 +4,23 @@
 
 module Git.Details where
 
-import Control.Applicative (Alternative(..), many)
 import Control.Monad
-import Data.Attoparsec.Text ( digit
-                            , IResult(..)
-                            , Parser
-                            , Result
+import Data.Attoparsec.Text ( Parser
                             , endOfInput
-                            , isEndOfLine
-                            -- , many'
-                            , many1
                             , manyTill
-                            , parse
-                            , skip
+                            , parseOnly
                             , skipSpace
-                            , string
-                            , takeText
-                            , takeTill
                             )
-import Data.List.Split (Splitter, keepDelimsL, split, whenElt)
-import Data.Text.IO (readFile)
-import Data.Text.Read (decimal)
--- import Data.Time.Calendar (Day(..), fromGregorian)
-import Data.Tree (Tree(..), Forest, unfoldForest)
-import Prelude hiding (readFile)
-import System.Directory
-import System.Exit (ExitCode(..))
-import System.Process
-import TextShow
+import Data.Attoparsec.Text.Utils (skipChar, skipN, skipLine, takeLine)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
-
+import Data.Text.IO (readFile)
+import Data.Tree (Tree(..))
 import Git.Commit
+import Prelude hiding (readFile)
+import System.Directory (doesDirectoryExist, doesFileExist)
+import System.Process.Utils (simpleRun)
+import TextShow
 
 -- 1. make sure valid git dir (has .git dir)
 -- 2. get project details: 'git remote show origin'
@@ -48,7 +33,7 @@ import Git.Commit
 
 data Attribute = Attr { parent :: Maybe Attribute -- ^ The parent attribute. E.g. @test@ might be the parent of @dateTest@.
                       , name   :: T.Text          -- ^ The name of the attribute
-                      , value  :: Maybe (forall a. TextShow a => a)
+                      , value  :: Maybe (forall a. TextShow a => a) -- ^ The value of the input, which must be a member of the class `TextShow`
                       }
 
 
@@ -82,27 +67,6 @@ emptyDetails = Details { fetchURL=""
                        , localPullBranch=""
                        , localPushBranch=""
                        }
-
--- | Skip any char
-skipChar :: Parser ()
-skipChar = skip (const True)
-
--- | Skip any @N@ chars
-skipN :: Int -> Parser ()
-skipN = flip replicateM_ skipChar
-
--- | Skip an entire line (up to and including the newline)
-skipLine :: Parser ()
-skipLine = do
-  takeTill isEndOfLine
-  skipChar
-
--- | Take an entire line (up to, but not including, the newline)
-takeLine :: Parser T.Text
-takeLine = do
-  result <- takeTill isEndOfLine
-  skipChar
-  return result
 
 -- | Parser for `Details`
 -- | Examples parsed:
@@ -148,7 +112,7 @@ detailsParser = do
   skipLine                            -- Skip "  Local branch configured for 'git pull':"
   skipSpace
   localPushBranch' <- takeLine
-  skipChar `manyTill` endOfInput
+  _ <- skipChar `manyTill` endOfInput
   return $ Details { fetchURL=fetchURL'
               , pushURL=pushURL'
               , headBranch=headBranch'
@@ -157,41 +121,13 @@ detailsParser = do
               , localPushBranch=localPushBranch'
               }
 
-
--- | Do `readProcessWithExitCode`, returning @`Left` errorDetails@ on failure
-simpleRun :: String -> [String] -> String -> IO (Either String String)
-simpleRun cmd args input = do
-  (exitCode, stdOut, stdErr) <- readProcessWithExitCode cmd args input
-  if (exitCode /= ExitSuccess) || (stdErr /= "")
-  then do
-    return . Left  $ unlines ["exitCode:", show exitCode, "stderr:", stdErr]
-  else do
-    return . Right $ stdOut
-
 -- | Get the details of the @git@ project in the current directory
-projectDetails :: IO (Result Details)
+projectDetails :: IO (Either String Details)
 projectDetails = do
   maybeResults <- simpleRun "git" ["remote", "show", "origin"] ""
   case maybeResults of
-    Left  _       -> return $ Done T.empty emptyDetails
-    Right results -> return . parse detailsParser . T.pack $ results
--- projectDetails = do
---   (exitCode, out, err) <- readProcessWithExitCode "git" ["remote", "show", "origin"] ""
---   if (exitCode /= ExitSuccess) || (err /= [])
---   then do
---     return $ Done T.empty emptyDetails
---   else do
---     return . parseDetails . T.pack $ out
-
--- | Take until equal
-takeTillEq :: Char -> Parser T.Text
-takeTillEq = takeTill . (==)
-
--- | Returns @0@ on failed parse
-unsafeDecimal :: Integral a => T.Text -> a
-unsafeDecimal x = case decimal x of
-                    Right (y, _) -> y
-                    Left _       -> 0
+    Left  err     -> return $ Left err
+    Right results -> return . parseOnly detailsParser . T.pack $ results
 
 -- | Check that the current version of the file exists and can be parsed
 checkCurrentFile :: FilePath -> Parser a -> IO Bool
@@ -200,8 +136,8 @@ checkCurrentFile path parser = do
   if exists
   then do
     contents <- readFile path
-    case parser `parse` contents of
-      Done _ _ -> return True
+    case parser `parseOnly` contents of
+      Right _  -> return True
       _        -> return False
   else do
     return False
@@ -217,18 +153,17 @@ getFileInCommit path (Commit {hash=hashText}) = do
     Right s -> return . Right . T.pack $ s
 
 -- | Like `getFileInCommit`, but also parses
-parseFileInCommit :: FilePath -> Parser a -> Commit -> IO (Result a)
+parseFileInCommit :: FilePath -> Parser a -> Commit -> IO (Either String a)
 parseFileInCommit path parser commit = do
   text <- getFileInCommit path commit
   case text of
-    Left  e -> return $ Fail T.empty [] e
-    Right t -> return $ parser `parse` t
+    Left  e -> return $ Left e
+    Right t -> return $ parser `parseOnly` t
 
 -- | Only insert the result into the `Map` if `Done`
-insertResult :: Commit -> Result a -> Map.Map Commit a -> Map.Map Commit a
-insertResult _ (Fail    _ _ _) m = m
-insertResult _ (Partial _    ) m = m
-insertResult c (Done    _ r  ) m = Map.insert c r m
+insertResult :: Commit -> Either String a -> Map.Map Commit a -> Map.Map Commit a
+insertResult c (Right r) m = Map.insert c r m
+insertResult _  _        m = m
 
 -- | Given a `Parser`, a `FilePath`, and a `Commit` foldable (list), returns
 -- a map from each `Commit` to the result of the given file being parsed by

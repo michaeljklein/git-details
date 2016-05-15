@@ -6,7 +6,7 @@ module Data.Tree.Utils ( forestBranches
                        , treeLeaves
                        ) where
 
-import Data.List.Utils (keepPartition, keepSelect)
+import Data.List.Utils (keepPartition)
 import Data.Tree       (Tree(..), Forest)
 
 
@@ -14,9 +14,9 @@ import Data.Tree       (Tree(..), Forest)
 -- that satisfy @p@
 forestFilter :: (Tree a -> Bool) -> Forest a -> [Tree a]
 forestFilter _ [] = []
-forestFilter p x  = keep ++ forestFilter p (branches >>= subForest)
+forestFilter p x  = keep ++ forestFilter p (bs >>= subForest)
   where
-    ~(keep, leaves, branches) = keepPartition p (null . subForest) x
+    ~(keep, _, bs) = keepPartition p (null . subForest) x
 
 -- | `forestFilter` for `Tree`s
 treeFilter :: (Tree a -> Bool) -> Tree a -> [Tree a]

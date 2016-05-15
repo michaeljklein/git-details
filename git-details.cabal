@@ -32,6 +32,9 @@ library
                      , split      >= 0.1.1
                      , text-show  >= 0.5
   default-language:    Haskell2010
+  other-modules:       Data.Attoparsec.Text.Utils
+                     , Data.List.Utils
+                     , System.Process.Utils
 
 executable git-details
   hs-source-dirs:      app

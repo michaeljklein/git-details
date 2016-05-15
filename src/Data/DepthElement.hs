@@ -6,23 +6,11 @@ import Data.Attoparsec.Text.Utils (takeLine)
 import Control.Applicative (Alternative(..))
 import Data.Text (Text)
 import Data.Tree (Forest, unfoldForest)
-import Data.Attoparsec.Text ( digit
-                            , IResult(..)
-                            , Parser
-                            , Result
-                            , endOfInput
-                            , isEndOfLine
-                            -- , many'
+import Data.Attoparsec.Text ( Parser
                             , many1
-                            , manyTill
-                            , parse
-                            , skip
-                            , skipSpace
                             , string
-                            , takeText
-                            , takeTill
                             )
-import Data.List.Split (Splitter, keepDelimsL, split, whenElt)
+import Data.List.Split (keepDelimsL, split, whenElt)
 
 data DepthElement = DepthElement { depth :: Int
                                  , dElem :: Text
@@ -51,9 +39,9 @@ parseDepth = do
 
 parseDepthElement :: Parser DepthElement
 parseDepthElement = do
-  depth <- parseDepth
-  element <- takeLine
-  return $ DepthElement depth element
+  d <- parseDepth
+  e <- takeLine
+  return $ DepthElement d e
 
 
 splitOnDepth :: [DepthElement] -> [[DepthElement]]

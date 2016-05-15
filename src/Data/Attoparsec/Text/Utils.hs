@@ -16,7 +16,7 @@ skipN = flip replicateM_ skipChar
 -- | Skip an entire line (up to and including the newline)
 skipLine :: Parser ()
 skipLine = do
-  takeTill isEndOfLine
+  _ <- takeTill isEndOfLine
   skipChar
 
 -- | Take an entire line (up to, but not including, the newline)
@@ -35,3 +35,4 @@ unsafeDecimal :: Integral a => Text -> a
 unsafeDecimal x = case decimal x of
                     Right (y, _) -> y
                     Left _       -> 0
+

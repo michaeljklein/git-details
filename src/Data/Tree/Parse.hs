@@ -2,33 +2,25 @@
 
 module Data.Tree.Parse where
 
-import Data.Tree (Tree(..), unfoldTree)
-import Data.DepthElement
-import Data.Text (Text)
-
 import Data.Attoparsec.Text ( digit
-                            , IResult(..)
                             , Parser
-                            , Result
-                            , endOfInput
-                            , isEndOfLine
-                            -- , many'
                             , many1
-                            , manyTill
-                            , parse
-                            , skip
-                            , skipSpace
                             , string
-                            , takeText
-                            , takeTill
                             )
 import Data.Attoparsec.Text.Utils (takeLine)
+import Data.DepthElement
+import Data.Text (Text)
+import Data.Tree (Tree(..))
 
-data DirectoryTree = DirTree { numFiles :: Int
-                             , numDirs  :: Int
-                             , dirTree  :: Tree Text
+
+-- | This is a data type for a directory tree, with added details on the number
+-- of files, directories
+data DirectoryTree = DirTree { numFiles :: Int        -- ^ The number of files in the given directory
+                             , numDirs  :: Int        -- ^ The number of subdirectories in the given directory
+                             , dirTree  :: Tree Text  -- ^ The directory tree
                              } deriving (Eq, Show)
 
+-- | Parse the directory (and file) counts returned by the @tree@ command
 parseDirCounts :: Parser (Int, Int)
 parseDirCounts = do
   dirs <- many1 digit
@@ -37,12 +29,13 @@ parseDirCounts = do
   _ <- string " files\n"
   return (read dirs, read files)
 
-depthTree :: Parser (Tree Text)
-depthTree = do
+-- | Parse a directory tree (from what's returned by the @tree@ command
+parseDirectoryTree :: Parser DirectoryTree
+parseDirectoryTree = do
   dir <- takeLine
   es <- many1 parseDepthElement
   _ <- takeLine
   (dirs, files) <- parseDirCounts
   let splitted = initialSplit es
   let nonempty = filter (not . null) splitted
-  return $ Node dir $ unfoldDepthTree nonempty
+  return $ DirTree files dirs $ Node dir $ unfoldDepthTree nonempty
