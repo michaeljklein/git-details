@@ -1,4 +1,13 @@
+{-|
+Module      : Git.Commit
+ Description : Data type for git commits
+Copyright   : (c) Michael Klein, 2016
+License     : BSD3
+Maintainer  : lambdamichael(at)gmail.com
+-}
+
 module Git.Commit where
+
 
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime(..))

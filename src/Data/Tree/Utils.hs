@@ -108,6 +108,7 @@ treeSort = treeSortBy compare
 treeSortBy :: (a -> a -> Ordering) -> Tree a -> Tree a
 treeSortBy cmp (Node x xs) = Node x $ forestSortBy cmp xs
 
+-- | See `treeSort`
 forestSort :: Ord a => Forest a -> Forest a
 forestSort = forestSortBy compare
 

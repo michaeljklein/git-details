@@ -1,3 +1,11 @@
+{-|
+Module      : Git.DiffTree
+Description : Types and parsers for the results of @git diff-tree@
+Copyright   : (c) Michael Klein, 2016
+License     : BSD3
+Maintainer  : lambdamichael(at)gmail.com
+-}
+
 module Git.DiffTree where
 
 import Control.Applicative        ( (<|>)
@@ -22,25 +30,33 @@ import Data.Text                  ( Text
 import Prelude hiding             ( replicate
                                   )
 
-
+-- | `SHA1` objects should contain exactly 40 characters and
+-- corresponds to the digest of the hash
 newtype SHA1 = SHA1 Text deriving (Eq, Ord, Show)
 
+-- | A mode is exactly 6 characters and is found in the @git tree-diff@
+-- command results
 data Mode = Mode Int deriving (Eq, Ord, Show)
 
+-- | A filepath, relative to the root directory of the project
 type Path = Text
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- | The source of an update/change, as shown by @git tree-diff@
 data Src = Src { srcMode :: Mode
                , srcSHA1 :: SHA1
                , srcPath :: Path
                } deriving (Eq, Ord, Show)
 
+-- | The destination of an update/change, as shown by @git tree-diff@
 data Dst = Dst { dstMode :: Mode
                , dstSHA1 :: SHA1
                , dstPath :: Maybe Path
                } deriving (Eq, Ord, Show)
 
-data DiffTree = DiffTree { src    :: Src
+-- | A single @git tree-diff@ result
+data TreeDiff = TreeDiff { src    :: Src
                          , dst    :: Dst
                          , status :: Status
                          } deriving (Eq, Ord, Show)
@@ -48,6 +64,7 @@ data DiffTree = DiffTree { src    :: Src
 -- | A percentage
 newtype Percent = Percent Int deriving (Eq, Ord)
 
+-- | Show a percentage with the @%@ sign
 instance Show Percent where
   show (Percent p) = show p ++ "%"
 
@@ -57,6 +74,8 @@ parsePercent = do
   p <- count 2 digit
   return . Percent . read $ p
 ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- | The `Status` of a diff, as shown by @git tree-diff@
 data Status = Addition
             | Copy              Percent
             | Delete
@@ -66,18 +85,22 @@ data Status = Addition
             | Unmerged
             | Unknown    deriving (Eq, Ord, Show)
 
+-- | Parse a single status, without percentage
 parseOneStatus :: Char -> Status -> Parser Status
 parseOneStatus c s = char c >> return s
 
+-- | Parse the `Modify` status
 parseModifyStatus :: Char -> (Maybe Percent -> Status) -> Parser Status
 parseModifyStatus 'M' _ = char 'M' >> liftM (Modify . Just) parsePercent <|> return (Modify Nothing)
 parseModifyStatus  _  _ = failParse -- 'M' must be passed to parseModifyStatus
 
+-- | Parse the `Copy` and `Rename` statuses
 parseOnePercentStatus :: Char -> (Percent -> Status) -> Parser Status
 parseOnePercentStatus 'C' _ = char 'C' >> liftM Copy   parsePercent
 parseOnePercentStatus 'R' _ = char 'R' >> liftM Rename parsePercent
 parseOnePercentStatus  _  _ = failParse -- Char other than 'C'/'R' passed to parseOnePercentStatus
 
+-- | All possible status parsers
 statusParsers :: [Parser Status]                       -- Possible status letters are:
 statusParsers = [ parseOneStatus        'A' Addition   -- A: addition of a file
                 , parseOnePercentStatus 'C' Copy       -- C: copy of a file into a new one
@@ -89,6 +112,7 @@ statusParsers = [ parseOneStatus        'A' Addition   -- A: addition of a file
                 , parseOneStatus        'X' Unknown    -- X: "unknown" change type (most probably a bug, please report it)
                 ]
 
+-- | Parse any `Status`
 parseStatus :: Parser Status
 parseStatus = foldl1 (<|>) statusParsers
 ------------------------------------------------------------------------------------------------------------------------------------------------------

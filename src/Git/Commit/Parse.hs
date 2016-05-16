@@ -1,3 +1,12 @@
+{-|
+Module      : Git.Commit.Parse
+ Description : Parse git commits
+Copyright   : (c) Michael Klein, 2016
+License     : BSD3
+Maintainer  : lambdamichael(at)gmail.com
+
+Only specific (needed) cases for commits are parsed.
+-}
 module Git.Commit.Parse where
 
 import Control.Applicative (many)

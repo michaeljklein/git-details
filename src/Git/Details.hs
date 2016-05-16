@@ -1,3 +1,11 @@
+{-|
+Module      : Git.Details
+Description : Functions and data types for getting the details of git projects
+Copyright   : (c) Michael Klein, 2016
+License     : BSD3
+Maintainer  : lambdamichael(at)gmail.com
+-}
+
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -31,6 +39,7 @@ import TextShow
 -- 7. compile results into single tree
 -- 8. output results
 
+-- | `Attribute`s can be unfolded into a `Tree` and otherwise are named values.
 data Attribute = Attr { parent :: Maybe Attribute -- ^ The parent attribute. E.g. @test@ might be the parent of @dateTest@.
                       , name   :: T.Text          -- ^ The name of the attribute
                       , value  :: Maybe (forall a. TextShow a => a) -- ^ The value of the input, which must be a member of the class `TextShow`
@@ -70,7 +79,7 @@ emptyDetails = Details { fetchURL=""
 
 -- | Parser for `Details`
 -- | Examples parsed:
-----
+-- --
 -- * remote origin
 --   Fetch URL: https://github.com/michaeljklein/prim-spoon.git
 --   Push  URL: https://github.com/michaeljklein/prim-spoon.git
@@ -81,8 +90,8 @@ emptyDetails = Details { fetchURL=""
 --     master merges with remote master
 --   Local ref configured for 'git push':
 --     master pushes to master (up to date)
-----
-----
+-- --
+-- --
 -- * remote origin
 --   Fetch URL: https://github.com/michaeljklein/CPlug.git
 --   Push  URL: https://github.com/michaeljklein/CPlug.git
@@ -93,7 +102,7 @@ emptyDetails = Details { fetchURL=""
 --     master merges with remote master
 --   Local ref configured for 'git push':
 --     master pushes to master (fast-forwardable)
-----
+--
 detailsParser :: Parser Details
 detailsParser = do
   skipLine                            -- Skip "* remote origin"
