@@ -8,7 +8,11 @@ Maintainer  : lambdamichael(at)gmail.com
 
 module Data.Attoparsec.Text.Utils where
 
-import Control.Monad        ( replicateM_
+
+import Control.Applicative  ( (<|>)
+                            )
+import Control.Monad        ( liftM
+                            , replicateM_
                             )
 import Data.Attoparsec.Text ( Parser
                             , isEndOfLine
@@ -57,3 +61,6 @@ unsafeDecimal x = case decimal x of
 failParse :: Parser a
 failParse = satisfyWith (const undefined) (const False)
 
+-- | Return `Nothing` if the parse fails, else return `Just` the result
+maybeParse :: Parser a -> Parser (Maybe a)
+maybeParse p = liftM Just p <|> return Nothing

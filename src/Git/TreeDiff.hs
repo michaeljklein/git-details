@@ -51,7 +51,7 @@ data Mode = Mode Int deriving (Eq, Ord, Show)
 
 -- | Parse a `Mode`
 parseMode :: Parser Mode
-parseMode = count 6 digit >>= return . Mode
+parseMode = count 6 digit >>= return . Mode . read
 
 -- | A filepath, relative to the root directory of the project
 type Path = Text
