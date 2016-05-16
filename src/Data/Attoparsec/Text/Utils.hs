@@ -1,3 +1,11 @@
+{-|
+Module      : Data.Attoparsec.Text.Utils
+Description : Utilities to extend the functionality of Data.Attoparsec.Text
+ Copyright   : (c) Michael Klein, 2016
+License     : BSD3
+Maintainer  : lambdamichael(at)gmail.com
+-}
+
 module Data.Attoparsec.Text.Utils where
 
 import Control.Monad        ( replicateM_

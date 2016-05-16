@@ -1,3 +1,14 @@
+{-|
+Module      : Data.List.Utils
+Description : A few utilities for working with lists
+Copyright   : (c) Michael Klein, 2016
+License     : BSD3
+Maintainer  : lambdamichael(at)gmail.com
+
+The two tools here are straightforward extensions to
+what's found in "Data.List"
+-}
+
 module Data.List.Utils where
 
 

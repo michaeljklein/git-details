@@ -1,3 +1,15 @@
+{-|
+Module      : Data.Tree.Parse
+Description : Parse the output of the 'tree' command
+Copyright   : (c) Michael Klein, 2016
+License     : BSD3
+Maintainer  : lambdamichael(at)gmail.com
+
+Convert the output of the @tree@ command to a `DirectoryTree`,
+which contains fields for the number of files, directories and
+ a directory tree.
+-}
+
 {-# LANGUAGE OverloadedStrings #-}
 
 module Data.Tree.Parse where
