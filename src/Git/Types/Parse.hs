@@ -7,28 +7,15 @@ import Control.Monad              ( liftM
                                   )
 import Data.Attoparsec.Text       ( Parser
                                   , anyChar
-                                  , char
                                   , count
                                   , digit
-                                  , many'
                                   , many1
-                                  , skipSpace
-                                  , takeWhile1
-                                  , takeTill
                                   )
-import Data.Attoparsec.Text.Utils ( failParse
-                                  , maybeParse
-                                  , takeLine
-                                  , skipChar
-                                  )
-import Data.Char                  ( isSpace
+import Data.Attoparsec.Text.Utils ( skipChar
                                   )
 import Data.Char.Parse            ( escapedChar
                                   )
-import Data.Text                  ( Text
-                                  , pack
-                                  , replicate
-                                  , singleton
+import Data.Text                  ( pack
                                   )
 
 import Data.Time.Clock.Parse      ( parseDate

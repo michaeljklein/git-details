@@ -6,13 +6,22 @@ License     : BSD3
 Maintainer  : lambdamichael(at)gmail.com
 -}
 
+
 module Data.Time.Clock.Parse where
 
-import Data.Attoparsec.Text (Parser, digit)
-import Data.Attoparsec.Text.Utils (unsafeDecimal, skipChar, skipLine, takeTillEq)
-import Data.Time.Calendar (fromGregorian)
-import Data.Time.Clock (UTCTime(..), secondsToDiffTime)
 
+import Data.Attoparsec.Text       ( Parser
+                                  , digit
+                                  )
+import Data.Attoparsec.Text.Utils ( skipChar
+                                  , skipLine
+                                  , takeTillEq
+                                  )
+import Data.Time.Calendar         ( fromGregorian
+                                  )
+import Data.Time.Clock            ( UTCTime(..)
+                                  , secondsToDiffTime
+                                  )
 
 
 -- | This should match a date with the following form:

@@ -13,30 +13,15 @@ import Control.Applicative        ( (<|>)
 import Control.Monad              ( liftM
                                   )
 import Data.Attoparsec.Text       ( Parser
-                                  , anyChar
                                   , char
                                   , count
                                   , digit
                                   , many'
-                                  , many1
                                   , skipSpace
-                                  , takeWhile1
                                   )
 import Data.Attoparsec.Text.Utils ( failParse
                                   , maybeParse
                                   , takeLine
-                                  )
-import Data.Char                  ( isSpace
-                                  )
-import Data.Char.Parse            ( escapedChar
-                                  )
-import Data.Text                  ( Text
-                                  , pack
-                                  , replicate
-                                  , singleton
-                                  )
-
-import Prelude hiding             ( replicate
                                   )
 
 import Git.Types (Mode, Path, SHA1(..))
