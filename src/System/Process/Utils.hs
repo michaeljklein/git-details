@@ -13,8 +13,10 @@ import System.Process ( readProcessWithExitCode
 import System.Exit    ( ExitCode(..)
                       )
 
+type ErrString = String
+
 -- | Do `readProcessWithExitCode`, returning @`Left` errorDetails@ on failure
-simpleRun :: String -> [String] -> String -> IO (Either String String)
+simpleRun :: String -> [String] -> String -> IO (Either ErrString String)
 simpleRun cmd args input = do
   (exitCode, stdOut, stdErr) <- readProcessWithExitCode cmd args input
   if (exitCode /= ExitSuccess) || (stdErr /= "")

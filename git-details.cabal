@@ -15,14 +15,15 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Git.Commit
-                     , Data.DepthElement
+  exposed-modules:     Data.DepthElement
                      , Data.Opaque
                      , Data.Tree.Parse
                      , Data.Tree.Utils
-                     , Git.Commit.Parse
                      , Git.Details
-                     , Git.TreeDiff
+                     , Git.DiffTree
+                     , Git.Types
+                     , Git.Types.Parse
+                     , System.Process.Utils
   build-depends:       base       >= 4.7     && < 5
                      , text       >= 1.2.0.0
                      , attoparsec >= 0.10.0.0
@@ -37,7 +38,7 @@ library
   other-modules:       Data.Attoparsec.Text.Utils
                      , Data.Char.Parse
                      , Data.List.Utils
-                     , System.Process.Utils
+                     , Data.Time.Clock.Parse
 
 executable git-details
   hs-source-dirs:      app

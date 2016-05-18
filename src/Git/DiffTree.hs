@@ -1,12 +1,12 @@
 {-|
-Module      : Git.TreeDiff
+Module      : Git.DiffTree
 Description : Types and parsers for the results of @git diff-tree@
 Copyright   : (c) Michael Klein, 2016
 License     : BSD3
 Maintainer  : lambdamichael(at)gmail.com
 -}
 
-module Git.TreeDiff where
+module Git.DiffTree where
 
 import Control.Applicative        ( (<|>)
                                   )
@@ -17,12 +17,14 @@ import Data.Attoparsec.Text       ( Parser
                                   , char
                                   , count
                                   , digit
+                                  , many'
                                   , many1
                                   , skipSpace
                                   , takeWhile1
                                   )
 import Data.Attoparsec.Text.Utils ( failParse
                                   , maybeParse
+                                  , takeLine
                                   )
 import Data.Char                  ( isSpace
                                   )
@@ -37,49 +39,28 @@ import Data.Text                  ( Text
 import Prelude hiding             ( replicate
                                   )
 
--- | `SHA1` objects should contain exactly 40 characters and
--- corresponds to the digest of the hash
-newtype SHA1 = SHA1 Text deriving (Eq, Ord, Show)
-
--- | Parse a `SHA1` object
-parseSHA1 :: Parser SHA1
-parseSHA1 = count 40 anyChar >>= return . SHA1 . pack
-
--- | A mode is up to 6 digits and is found in the @git tree-diff@
--- command results
-data Mode = Mode Int deriving (Eq, Ord, Show)
-
--- | Parse a `Mode`
-parseMode :: Parser Mode
-parseMode = count 6 digit >>= return . Mode
-
--- | A filepath, relative to the root directory of the project
-type Path = Text
-
--- | Parse a `Path`. This will escape characters in the path,
--- but may otherwise not be up to all (POSIX, Windows, etc.)
--- path specifications
-parsePath :: Parser Path
-parsePath = liftM pack . many1 $ escapedChar <|> anyChar
-
+import Git.Types (Mode, Path, SHA1(..))
+import Git.Types.Parse (parseMode, parsePath, parseSHA1)
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------
 
--- | The source of an update/change, as shown by @git tree-diff@
-data Src = Src { srcMode :: Mode
-               , srcSHA1 :: SHA1
-               , srcPath :: Path
-               } deriving (Eq, Ord, Show)
 
--- | The destination of an update/change, as shown by @git tree-diff@
-data Dst = Dst { dstMode :: Mode
-               , dstSHA1 :: SHA1
-               , dstPath :: Maybe Path
-               } deriving (Eq, Ord, Show)
+-- | The source or destination of an update/change, as shown by @git tree-diff@
+data DiffCommit = DiffCommit { diffMode :: Mode
+                             , diffSHA1 :: SHA1
+                             , diffPath :: Maybe Path
+                             } deriving (Eq, Ord, Show)
+
+
+-- -- | The destination of an update/change, as shown by @git tree-diff@
+-- data Dst = Dst { dstMode :: Mode
+--                , dstSHA1 :: SHA1
+--                , dstPath :: Maybe Path
+--                } deriving (Eq, Ord, Show)
 
 -- | A single @git tree-diff@ result
-data TreeDiff = TreeDiff { src    :: Src
-                         , dst    :: Dst
+data DiffTree = DiffTree { src    :: DiffCommit
+                         , dst    :: DiffCommit
                          , status :: Status
                          } deriving (Eq, Ord, Show)
 ------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -139,34 +120,9 @@ parseStatus :: Parser Status
 parseStatus = foldl1 (<|>) statusParsers
 ------------------------------------------------------------------------------------------------------------------------------------------------------
 
--- | `Mode` of a created object
-creationMode :: Mode
-creationMode = Mode 0
-
--- | `Mode` of an unmerged object
-unmergedMode :: Mode
-unmergedMode = creationMode
-
--- | `SHA` of a created object
-creationSHA1 :: SHA1
-creationSHA1 = SHA1 $ replicate 40 $ singleton '0'
-
--- | `SHA1` of an unmerged object
-unmergedSHA1 :: SHA1
-unmergedSHA1 = creationSHA1
-
--- | Git documentation says that this is the `SHA1` representing
--- the message "look at work tree".
-lookAtTreeSHA1 :: SHA1
-lookAtTreeSHA1 = creationSHA1
-
--- | Accepts any non-empty, spaceless text
-parseSpaceless :: Parser Text
-parseSpaceless = takeWhile1 $ not . isSpace
-
--- | Parse a `TreeDiff`
-parseTreeDiff :: Parser TreeDiff
-parseTreeDiff = do
+-- | Parse a `DiffTree`
+parseDiffTree :: Parser DiffTree
+parseDiffTree = do
   _ <- char ':'
   srcMode' <- parseMode
   _ <- char ' '
@@ -180,12 +136,16 @@ parseTreeDiff = do
   skipSpace
   srcPath' <- parsePath
   dstPath' <- maybeParse parsePath
-  let src' = Src srcMode' srcSHA1' srcPath'
-  let dst' = Dst dstMode' dstSHA1' dstPath'
-  return $ TreeDiff src' dst' status'
+  let src' = DiffCommit srcMode' srcSHA1' $ Just srcPath'
+  let dst' = DiffCommit dstMode' dstSHA1'        dstPath'
+  return $ DiffTree src' dst' status'
 
-
-
+-- | Parse a collection of `DiffTree` results
+parseDiffTrees :: Parser (SHA1, [DiffTree])
+parseDiffTrees = do
+  sha1 <- takeLine
+  diffTrees <- many' parseDiffTree
+  return (SHA1 sha1, diffTrees)
 
 -- :100644 100644 ed57f1e415cbd5e7794372c0418ab713817176bc b7c37d458013415b4d08cd86aee55eb6b4113518 M	src/Data/Tree/Utils.hs
 -- :100644 100644 8692f4d2b450940d516738d0f7ed8d0ef9a3c176 781238552012e599d6e3cfb5c8d6f665a5a8d45b M	src/Git/Commit.hs

@@ -15,7 +15,9 @@ import Control.Monad        ( liftM
                             , replicateM_
                             )
 import Data.Attoparsec.Text ( Parser
+                            , char
                             , isEndOfLine
+                            , manyTill
                             , satisfyWith
                             , skip
                             , takeTill
@@ -47,9 +49,14 @@ takeLine = do
   skipChar
   return result
 
--- | Take until equal
-takeTillEq :: Char -> Parser Text
-takeTillEq = takeTill . (==)
+-- -- | Take until equal
+-- takeTillEq :: Char -> Parser Text
+-- takeTillEq = takeTill . (==)
+
+-- | Take until char
+takeTillEq :: Parser a -> Char -> Parser [a]
+takeTillEq p c = manyTill p $ char c
+
 
 -- | Returns @0@ on failed parse
 unsafeDecimal :: Integral a => Text -> a

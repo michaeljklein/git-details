@@ -12,6 +12,7 @@ Maintainer  : lambdamichael(at)gmail.com
 
 module Git.Details where
 
+import Control.Applicative (many)
 import Control.Monad
 import Data.Attoparsec.Text ( Parser
                             , endOfInput
@@ -24,7 +25,8 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import Data.Text.IO (readFile)
 import Data.Tree (Tree(..))
-import Git.Commit
+import Git.Types (Commit(..), SHA1(..))
+import Git.Types.Parse (parseLogLine)
 import Prelude hiding (readFile)
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.Process.Utils (simpleRun)
@@ -154,7 +156,7 @@ checkCurrentFile path parser = do
 -- | Given a filepath (relative to the root directory of the branch) and a
 -- `Commit`, return its contents or return `Nothing` on failure
 getFileInCommit :: FilePath -> Commit -> IO (Either String T.Text)
-getFileInCommit path (Commit {hash=hashText}) = do
+getFileInCommit path (Commit {hash=(SHA1 hashText)}) = do
   let hashStr = T.unpack hashText
   result <- simpleRun "git" ["show", hashStr ++ ":" ++ path] ""
   case result of
@@ -183,7 +185,26 @@ parseForCommits parser path = foldM (\m c -> (parseCommit c >>= \r -> return $ i
     parseCommit = parseFileInCommit path parser
     m0          = Map.empty
 
-
+-- | This function gets all the `Commit`s for the current branch
+-- An example of what this should parse:
+-- ~/../prim-spoon$ git log --date=iso --pretty="%H|%cd"
+-- c6b082bcf72fed2db488dfd4506f9923f742e743|2016-05-03 19:25:24 -0400
+-- 3f9778e19ee89000d8cd0a1c164afb3589650c3b|2016-05-02 18:42:11 -0400
+-- abae2c404d4d2c26e7fc9005cfb59a5699977c39|2016-05-02 14:11:43 -0400
+-- 07c0fe75d1a621abb10dfb4fb27549b390e35b3b|2016-05-02 13:48:43 -0400
+-- c8bba65dc33f4c4cab53498002beddf673b674cc|2016-05-02 13:42:59 -0400
+-- 3f207b6536fc30b2eadc09edd260e413c3e4ad79|2016-05-02 13:35:35 -0400
+-- 04f4163c52231f1043123e6b9b66c76b95e3f05f|2016-05-02 13:32:37 -0400
+-- f80e7e8c9204dd245a3545b5216e42bc0be7af2e|2016-05-02 13:28:25 -0400
+-- e37b44908f08e912373c16a899516dc07fec363d|2016-05-02 13:04:31 -0400
+-- 4604bec7ae5042aac493522cdf33166c26aa285f|2016-05-02 12:55:28 -0400
+-- Consider taking all decimals instead of takeTillEq
+getCommits :: IO (Either String [Commit])
+getCommits = do
+  maybeResults <- simpleRun "git" ["log", "--date=short", "--pretty=\"%H|%cd\""] ""
+  case maybeResults of
+    Left  err     -> return $ Left err
+    Right results -> return . parseOnly (many $ parseLogLine <* endOfInput) . T.pack $ results
 
 
 
