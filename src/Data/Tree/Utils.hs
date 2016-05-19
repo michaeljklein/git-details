@@ -97,8 +97,8 @@ treeBranches   :: Tree a -> [a]
 treeBranches   = branches treeFilter
 
 -- | Note that all these sorts can be tested by the following:
--- sort   . sort    == sort
--- sort   . reverse == id
+-- sort   . sort    == sort,
+-- sort   . reverse == id,
 -- length . sort    == length
 treeSort :: Ord a => Tree a -> Tree a
 treeSort = treeSortBy compare

@@ -10,11 +10,13 @@ Maintainer  : lambdamichael(at)gmail.com
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Data.DepthElement ( DepthElement(..)
+module Data.DepthElement ( Depth(..)
+                         , DepthElement(..)
                          , baseDepth
-                         , forestDepthElements
-                         , initialSplit
                          , parseDepthElement
+                         , initialSplit
+                         , splitOnDepth
+                         , forestDepthElements
                          , treeDepthElements
                          , unfoldDepthTree
                          ) where
@@ -116,7 +118,7 @@ unfolder  _     = (""     , []             )
 initialSplit :: [DepthElement a] -> [[DepthElement a]]
 initialSplit = split $ keepDelimsL $ whenElt ((Depth 1 ==) . depth)
 
--- | Unfold a `[[DepthElement Text]]` into a forest
+-- | Unfold `DepthElement` into a forest
 unfoldDepthTree :: [[DepthElement Text]] -> Forest Text
 unfoldDepthTree = unfoldForest unfolder
 

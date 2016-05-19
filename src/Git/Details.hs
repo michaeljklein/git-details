@@ -81,7 +81,8 @@ emptyDetails = Details { fetchURL=""
 
 -- | Parser for `Details`
 -- | Examples parsed:
--- --
+--
+-- @
 -- * remote origin
 --   Fetch URL: https://github.com/michaeljklein/prim-spoon.git
 --   Push  URL: https://github.com/michaeljklein/prim-spoon.git
@@ -92,8 +93,8 @@ emptyDetails = Details { fetchURL=""
 --     master merges with remote master
 --   Local ref configured for 'git push':
 --     master pushes to master (up to date)
--- --
--- --
+-- @
+-- @
 -- * remote origin
 --   Fetch URL: https://github.com/michaeljklein/CPlug.git
 --   Push  URL: https://github.com/michaeljklein/CPlug.git
@@ -104,6 +105,7 @@ emptyDetails = Details { fetchURL=""
 --     master merges with remote master
 --   Local ref configured for 'git push':
 --     master pushes to master (fast-forwardable)
+-- @
 --
 detailsParser :: Parser Details
 detailsParser = do
@@ -187,6 +189,7 @@ parseForCommits parser path = foldM (\m c -> (parseCommit c >>= \r -> return $ i
 
 -- | This function gets all the `Commit`s for the current branch
 -- An example of what this should parse:
+-- @
 -- ~/../prim-spoon$ git log --date=iso --pretty="%H|%cd"
 -- c6b082bcf72fed2db488dfd4506f9923f742e743|2016-05-03 19:25:24 -0400
 -- 3f9778e19ee89000d8cd0a1c164afb3589650c3b|2016-05-02 18:42:11 -0400
@@ -198,7 +201,8 @@ parseForCommits parser path = foldM (\m c -> (parseCommit c >>= \r -> return $ i
 -- f80e7e8c9204dd245a3545b5216e42bc0be7af2e|2016-05-02 13:28:25 -0400
 -- e37b44908f08e912373c16a899516dc07fec363d|2016-05-02 13:04:31 -0400
 -- 4604bec7ae5042aac493522cdf33166c26aa285f|2016-05-02 12:55:28 -0400
--- Consider taking all decimals instead of takeTillEq
+-- @
+--
 getCommits :: IO (Either String [Commit])
 getCommits = do
   maybeResults <- simpleRun "git" ["log", "--date=short", "--pretty=\"%H|%cd\""] ""

@@ -8,11 +8,14 @@ Maintainer  : lambdamichael(at)gmail.com
 
 module System.Process.Utils where
 
+
 import System.Process ( readProcessWithExitCode
                       )
 import System.Exit    ( ExitCode(..)
                       )
 
+
+-- | A `String` containing errors
 type ErrString = String
 
 -- | Do `readProcessWithExitCode`, returning @`Left` errorDetails@ on failure

@@ -23,13 +23,13 @@ import Data.Attoparsec.Text.Utils (takeLine)
 import Data.DepthElement
 import Data.Text (Text)
 import Data.Tree (Tree(..))
-
+import Git.Types (Path)
 
 -- | This is a data type for a directory tree, with added details on the number
 -- of files, directories
 data DirectoryTree = DirTree { numFiles :: Int        -- ^ The number of files in the given directory
                              , numDirs  :: Int        -- ^ The number of subdirectories in the given directory
-                             , dirTree  :: Tree Text  -- ^ The directory tree
+                             , dirTree  :: Tree Path  -- ^ The directory tree
                              } deriving (Eq, Show)
 
 -- | Parse the directory (and file) counts returned by the @tree@ command
@@ -41,7 +41,7 @@ parseDirCounts = do
   _ <- string " files\n"
   return (read dirs, read files)
 
--- | Parse a directory tree (from what's returned by the @tree@ command
+-- | Parse a directory tree (from what's returned by the @tree@ command)
 parseDirectoryTree :: Parser DirectoryTree
 parseDirectoryTree = do
   dir <- takeLine
