@@ -14,16 +14,18 @@ which contains fields for the number of files, directories and
 
 module Data.Tree.Parse where
 
-import Data.Attoparsec.Text ( digit
-                            , Parser
-                            , many1
-                            , string
-                            )
-import Data.Attoparsec.Text.Utils (takeLine)
+import Data.Attoparsec.Text       ( digit
+                                  , Parser
+                                  , many1
+                                  , string
+                                  )
+import Data.Attoparsec.Text.Utils (takeLine
+                                  )
 import Data.DepthElement
-import Data.Text (Text)
-import Data.Tree (Tree(..))
-import Git.Types (Path)
+import Data.Tree                  ( Tree(..)
+                                  )
+import Git.Types                  ( Path
+                                  )
 
 -- | This is a data type for a directory tree, with added details on the number
 -- of files, directories

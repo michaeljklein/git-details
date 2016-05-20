@@ -16,7 +16,7 @@ module Git.Types (
     , unmergedSHA1
     , lookAtTreeSHA1
     -- * Modes
-    , Mode(..)
+    , DiffMode(..)
     , creationMode
     , unmergedMode
     -- * Paths
@@ -67,16 +67,16 @@ lookAtTreeSHA1 :: SHA1
 lookAtTreeSHA1 = creationSHA1
 
 
--- | A mode is up to 6 digits and is found in the @git tree-diff@
+-- | A `DiffMode` is up to 6 digits and is found in the @git tree-diff@
 -- command results
-data Mode = Mode Int deriving (Eq, Ord, Show)
+data DiffMode = DiffMode Int deriving (Eq, Ord, Show)
 
--- | `Mode` of a created object
-creationMode :: Mode
-creationMode = Mode 0
+-- | `DiffMode` of a created object
+creationMode :: DiffMode
+creationMode = DiffMode 0
 
--- | `Mode` of an unmerged object
-unmergedMode :: Mode
+-- | `DiffMode` of an unmerged object
+unmergedMode :: DiffMode
 unmergedMode = creationMode
 
 

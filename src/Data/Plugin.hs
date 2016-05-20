@@ -7,7 +7,7 @@ mapToMap f = fromList . map (fmap f . join (,))
 -- Example plugins:
 --  char counter
 --  word counter
---  diff stats <<<<-----
+--  diff stats <<<<----- unsure whether to support this
 --  cloc
 --  tree
 --  dependency checker -- out of scope? YES
@@ -38,32 +38,9 @@ instance Ord (Plugin s a) where
   compare x y = compare (x^.plugName) (y^.plugName)
 
 
--- | This is what a `Plugin` pipe can access. It's updated and fed back into
--- the pipe at each step
-data LocalInput a = LocInput { _commit         :: Maybe Commit
-                             , _commitDiffTree :: Maybe DiffTree
-                             , _commitDirTree  :: Maybe DirTree
-                             , _commitFiles    :: Maybe Map Path Text
-                             , _localState     :: LocalState a
-                             }
 
-makeClassy ''LocalInput
-
-
--- | This is the local state for a `Plugin`
-data LocalState a = LocalState { _state :: a
-                               , _attributes :: [Attribute]
-                               }
-
-makeClassy ''LocalState
-
-
--- | This allows a plugin to finely specify what it wants from the project
--- and how it's choosing. Because of how fine this is, fetchers may quickly
--- filter the files/commits for piping to the plugins. Note: all the given
--- @by_@ parameters must return `True` for the info to be passed to the plugin.
--- If diffTree, dirTree, files are all false, only (Details, Commit) will be
--- passed to the plugin.
+-- |  Note: all the given @by_@ parameters must return `True` or be `Nothing`
+-- for the info to be passed to the plugin.
 data Wanted = Want { _diffTree        :: Bool                    -- ^ The `DiffTree` results
                    , _dirTree         :: Bool                    -- ^ The `DirectoryTree`
                    , _files           :: Bool                    -- ^ File results (a plugin could only access diffs or the trees)
@@ -80,57 +57,107 @@ data WantedBy = WantBy { _byCommit        :: Maybe (Commit -> Bool)  -- ^ Filter
 makeLenses ''Wanted
 
 
--- master:
---  plugin list is input
---  sorts plugins into simple/mapreduce
---  makes pipes
---  forks pipes
---  connects pipes
+data File = File FilePath Text deriving (Eq, Ord, Show)
+
+-- | General type for a state in the pipes of the application.
+data GitDetails ds pg cm dt fs pm pr rs = { _details :: ds
+                                          , _plugins :: pg
+                                          , _commit  :: cm
+                                          , _diffTree :: dt
+                                          , _file     :: fl
+                                          , _plugResult :: pr
+                                          }
+
+makeLenses ''GitDetails
+
+-- | Convenience names for making the dependencies
+type Plugins'    = Array Int (Maybe PluginName)
+
+type Commit'     = Maybe Commit
+
+type DiffTrees'  = [DiffTree]
+
+type File'       = Maybe File
+
+type PlugResult' = Maybe Dynamic
+
+-- | These are the convernience types, representing stages in the computation,
+-- to ensure that the stages are executed in their proper order (i.e. as
+-- `DiffTree`s requires the `Commit`s, `Commit`s should be computed first.
+type DetailsS       = GitDetails X        X       X          X
+
+type PluginS        = GitDetails Plugins' X       X          X
+
+type CommitS        = GitDetails Plugins' Commit' X          X
+
+type DiffTreesS     = GitDetails Plugins' Commit' DiffTrees' X
+
+type FilePathS      = GitDetails Plugins' Commit' DiffTrees' X
+
+type FileS          = GitDetails Plugins' Commit' DiffTrees' File'
+
+type PluginMapperS  = GitDetails Plugins' Commit' DiffTrees' File' PlugResult'
+
+type PluginReducerS = GitDetails Plugins' Commit' DiffTrees' File' PlugResult'
+
+type ResultS        = GitDetails Plugins' Commit' DiffTrees' File' PlugResult'
+
+type HPipe a = Pipe a a
+
+type Pipe = HPipe GitDetails
+
+-- git (info?)
+detailsProducer :: Producer DetailsS
+
+-- git log
+commitProducer :: Pipe DetailsS CommitS
+
+commitFilter :: Plugin -> Pipe CommitS CommitS
+
+-- git diff-tree
+diffTreeProducer :: Pipe CommitS DiffTreesS
+
+diffTreeFilter :: Plugin -> Pipe DiffTreesS DiffTreesS
+
+-- uses safe function (flag change?)
+filePathPipe :: Pipe DiffTreeS FilePathS
+
+filePathFilter :: Plugin -> Pipe FilePathS FilePathS
+
+-- git checkout
+filePipe :: Pipe FilePathS FileS
+
+-- flag change
+pluginsMapperPipe :: Pipe FileS PluginMapperS
+
+pluginMapperPipe :: Plugin -> Pipe PluginMapperS PluginMapperS
+
+-- flag change
+pluginsReducerPipe :: Pipe PluginMapperS PluginReducerS
+
+-- Better way to bundle (than cycling)
+--                           /-> Pipe PluginReducerS PluginReducerS ->\
+-- Producer PluginReducerS ----> Pipe PluginReducerS PluginReducerS ---> Pipe PluginReducerS PluginReducerS
+--                           \-> Pipe PluginReducerS PluginReducerS ->/
+-- That is, producer -fifo> worker reducers -fifo> single reducer
+-- Functions like cat when plugin not in element
+pluginReducerPipe :: Plugin -> Pipe PluginReducerS PluginReducerS
+
+-- flag change
+resultsPipe :: Pipe PluginS ResultS
+
+-- folder (probably concat/next/sort)
+resultsReducer :: Producer' ResultS m r -> Results
 
 
--- pipes
---  (commit, [plugin]) producer
---  byCommit filter
---  (commit, difftree, [plugin]) <- which want difftrees
---
---  Don't forget an 'anyWants'
---  byFileExtension >-> byFileName = byFile
---
--- details producer -> commit pipe -> \                                  / onlyCommit (commit, [plugin]) -> (plugin, commit) -> plugin cycle0
---                         initialSort > (commit, [plugin]) -> byCommit <
--- plugin  producer ----------------> /                                  \ diffTreePipe
---
---                                                          / onlyDiffTree (commit, difftree, [plugin]) -> (plugin, (commit, difftree)) -> plugin cycle1
--- diffTreePipe (commit, difftree, [plugin]) -> byDiffTree <
---                                                          \ dirTreePipe
---
---                                                         / onlyDirTree (commit, [difftree], dirtree, [plugin]) -> (plugin, (commit, [difftree], dirtree)) -> plugin cycle2
--- dirTreePipe (commit, [difftree], dirtree, [plugin]) -> byDirTree <
---                                                         \ filePipe
---
---                                                                   / onlyFiles (commit, [difftree], dirtree, file, [plugin]) -> (plugin, (commit, [difftree], ..)) -> plugin cycle3
--- filePipe (commit, [difftree], dirtree, file, [plugin]) -> byFile <
---                                                                   \ nullPipe
---
---
---                                 / onlyStuffPipe
--- forkedPipe x (x, _) -> byStuff <
---                                 \ nextPipe
---
--- forkedPipe needs:
---  up fork pipe
---  down fork pipe
---
---  forkedPipe :: Pipe a b -> Pipe a c -> Consumer' a m ()
---
--- onlyStuffPipe (commit, .., [plugin]) -> (plugin, (commit, ..)) -> plugin cycle
---
---
--- plugin cycle -> plugin1 -> plugin2 -> plugin3
---                       \          |          /
---                        \         |         /
---                         \/       V       \/
---                           results mailbox
+
+
+
+
+
+
+
+
 
 splitterPipe :: Pipe a (a, a)
 splitterPipe = Pipes.Prelude.Map $ join (,)
@@ -274,5 +301,6 @@ wantNothing :: Wanted
 wantNothing = Want False False False False False n n n n n n n
   where
     n = Nothing
+
 
 

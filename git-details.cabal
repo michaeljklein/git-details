@@ -15,16 +15,24 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Data.DepthElement
+  exposed-modules:     Data.Conduit.Process.Utils
+                     , Data.DepthElement
+                     , Data.Git.Details
+                     , Data.Git.Details.Parse
+                     , Data.Git.DiffTree
+                     , Data.Git.DiffTree.Parse
                      , Data.Opaque
                      , Data.Tree.Parse
                      , Data.Tree.Utils
                      , Git.Details
-                     , Git.DiffTree
                      , Git.Types
                      , Git.Types.Parse
                      , System.Process.Utils
   build-depends:       base       >= 4.7     && < 5
+                     , bytestring >= 0.10.6.0
+                     , conduit    >= 1.2.6.1
+                     , conduit-combinators >= 1.0.0
+                     , lens       >= 4.0
                      , text       >= 1.2.0.0
                      , attoparsec >= 0.10.0.0
                      , containers >= 0.5.0.0
@@ -33,11 +41,14 @@ library
                      , time       >= 1.3
                      , process    >= 1.2.0.0
                      , split      >= 0.1.1
+                     , stm-chans  >= 3.0.0
+                     , stm-conduit >= 2.7.0
                      , text-show  >= 0.5
   default-language:    Haskell2010
   other-modules:       Data.Attoparsec.Text.Utils
                      , Data.Char.Parse
                      , Data.List.Utils
+                     , Data.Text.Builder.Utils
                      , Data.Time.Clock.Parse
 
 executable git-details

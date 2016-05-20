@@ -13,14 +13,11 @@ Maintainer  : lambdamichael(at)gmail.com
 module Git.Details where
 
 import Control.Applicative (many)
-import Control.Monad
+import Control.Monad (foldM)
 import Data.Attoparsec.Text ( Parser
                             , endOfInput
-                            , manyTill
                             , parseOnly
-                            , skipSpace
                             )
-import Data.Attoparsec.Text.Utils (skipChar, skipN, skipLine, takeLine)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import Data.Text.IO (readFile)
@@ -30,7 +27,9 @@ import Git.Types.Parse (parseLogLine)
 import Prelude hiding (readFile)
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.Process.Utils (simpleRun)
-import TextShow
+import TextShow (TextShow(..))
+import Data.Git.Details (Details(..))
+import Data.Git.Details.Parse (detailsParser)
 
 -- 1. make sure valid git dir (has .git dir)
 -- 2. get project details: 'git remote show origin'
@@ -41,98 +40,19 @@ import TextShow
 -- 7. compile results into single tree
 -- 8. output results
 
--- | `Attribute`s can be unfolded into a `Tree` and otherwise are named values.
-data Attribute = Attr { parent :: Maybe Attribute -- ^ The parent attribute. E.g. @test@ might be the parent of @dateTest@.
-                      , name   :: T.Text          -- ^ The name of the attribute
-                      , value  :: Maybe (forall a. TextShow a => a) -- ^ The value of the input, which must be a member of the class `TextShow`
-                      }
-
-
--- | Convert a list of attributes to a tree of attributes
-treeify :: [Attribute] -> Tree Attribute
-treeify = undefined
-
--- | Save a tree to a file (support filetypes?)
-saveTree :: TextShow a => Tree a -> FilePath -> IO Bool
-saveTree = undefined
+-- -- | `Attribute`s can be unfolded into a `Tree` and otherwise are named values.
+-- data Attribute = Attr { parent :: Maybe Attribute -- ^ The parent attribute. E.g. @test@ might be the parent of @dateTest@.
+--                       , name   :: T.Text          -- ^ The name of the attribute
+--                       , value  :: Maybe (forall a. TextShow a => a) -- ^ The value of the input, which must be a member of the class `TextShow`
+--                       }
+-- -- | Convert a list of attributes to a tree of attributes
+-- treeify :: [Attribute] -> Tree Attribute
+-- treeify = undefined
 
 -- | Check for @.git@ directory in current directory
 isGitRootDir :: IO Bool
 isGitRootDir = doesDirectoryExist ".git"
 
--- | Details of a @git@ project
-data Details = Details { fetchURL         :: T.Text
-                       , pushURL          :: T.Text
-                       , headBranch       :: T.Text
-                       , remoteBranch     :: T.Text
-                       , localPullBranch  :: T.Text
-                       , localPushBranch  :: T.Text
-                       }
-
--- | Empty details (all fields are empty)
-emptyDetails :: Details
-emptyDetails = Details { fetchURL=""
-                       , pushURL=""
-                       , headBranch=""
-                       , remoteBranch=""
-                       , localPullBranch=""
-                       , localPushBranch=""
-                       }
-
--- | Parser for `Details`
--- | Examples parsed:
---
--- @
--- * remote origin
---   Fetch URL: https://github.com/michaeljklein/prim-spoon.git
---   Push  URL: https://github.com/michaeljklein/prim-spoon.git
---   HEAD branch: master
---   Remote branch:
---     master tracked
---   Local branch configured for 'git pull':
---     master merges with remote master
---   Local ref configured for 'git push':
---     master pushes to master (up to date)
--- @
--- @
--- * remote origin
---   Fetch URL: https://github.com/michaeljklein/CPlug.git
---   Push  URL: https://github.com/michaeljklein/CPlug.git
---   HEAD branch: master
---   Remote branch:
---     master tracked
---   Local branch configured for 'git pull':
---     master merges with remote master
---   Local ref configured for 'git push':
---     master pushes to master (fast-forwardable)
--- @
---
-detailsParser :: Parser Details
-detailsParser = do
-  skipLine                            -- Skip "* remote origin"
-  skipN 13                            -- Skip "  Fetch URL: "
-  fetchURL'   <- takeLine
-  skipN 13                            -- Skip "  Push  URL: "
-  pushURL'    <- takeLine
-  skipN 15                            -- Skip "  HEAD branch: "
-  headBranch' <- takeLine
-  skipLine                            -- Skip "  Remote branch:"
-  skipSpace
-  remoteBranch' <- takeLine
-  skipLine                            -- Skip "  Local branch configured for 'git pull':"
-  skipSpace
-  localPullBranch' <- takeLine
-  skipLine                            -- Skip "  Local branch configured for 'git pull':"
-  skipSpace
-  localPushBranch' <- takeLine
-  _ <- skipChar `manyTill` endOfInput
-  return $ Details { fetchURL=fetchURL'
-              , pushURL=pushURL'
-              , headBranch=headBranch'
-              , remoteBranch=remoteBranch'
-              , localPullBranch=localPullBranch'
-              , localPushBranch=localPushBranch'
-              }
 
 -- | Get the details of the @git@ project in the current directory
 projectDetails :: IO (Either String Details)

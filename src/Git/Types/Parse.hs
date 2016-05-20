@@ -9,7 +9,7 @@ Maintainer  : lambdamichael(at)gmail.com
 
 module Git.Types.Parse ( parseLogLine
                        , parseSHA1
-                       , parseMode
+                       , parseDiffMode
                        , parsePath
                        ) where
 
@@ -50,8 +50,8 @@ parseSHA1 :: Parser SHA1
 parseSHA1 = count 40 anyChar >>= return . SHA1 . pack
 
 -- | Parse a `Mode`
-parseMode :: Parser Mode
-parseMode = count 6 digit >>= return . Mode . read
+parseDiffMode :: Parser DiffMode
+parseDiffMode = count 6 digit >>= return . DiffMode . read
 
 -- | Parse a `Path`. This will escape characters in the path,
 -- but may otherwise not be up to all (POSIX, Windows, etc.)
