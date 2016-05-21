@@ -31,9 +31,6 @@ data Plugin s a = Plug { _plugName    :: Text                                   
 
 makeClassy ''Plugin
 
-
-
-
 instance Ord (Plugin s a) where
   compare x y = compare (x^.plugName) (y^.plugName)
 
@@ -56,6 +53,13 @@ data WantedBy = WantBy { _byCommit        :: Maybe (Commit -> Bool)  -- ^ Filter
 
 makeLenses ''Wanted
 
+
+-- | Very Zen, but in this case, very possibly pointless.
+--  (Used to build what's `Wanted` for a plugin.)
+wantNothing :: Wanted
+wantNothing = Want False False False False False n n n n n n n
+  where
+    n = Nothing
 
 data File = File FilePath Text deriving (Eq, Ord, Show)
 
@@ -102,133 +106,55 @@ type PluginReducerS = GitDetails Plugins' Commit' DiffTrees' File' PlugResult'
 
 type ResultS        = GitDetails Plugins' Commit' DiffTrees' File' PlugResult'
 
-type HPipe a = Pipe a a
-
-type Pipe = HPipe GitDetails
 
 -- git (info?)
-detailsProducer :: Producer DetailsS
+detailsProducer :: Monad m => Producer m DetailsS
 
 -- git log
-commitProducer :: Pipe DetailsS CommitS
+commitProducer :: Monad m => Conduit DetailsS m CommitS
 
-commitFilter :: Plugin -> Pipe CommitS CommitS
+commitFilter :: Monad m => Plugin -> Conduit CommitS m CommitS
 
 -- git diff-tree
-diffTreeProducer :: Pipe CommitS DiffTreesS
+diffTreeProducer :: Monad m => Conduit CommitS m DiffTreesS
 
-diffTreeFilter :: Plugin -> Pipe DiffTreesS DiffTreesS
+diffTreeFilter :: Monad m => Plugin -> Conduit DiffTreesS m DiffTreesS
 
 -- uses safe function (flag change?)
-filePathPipe :: Pipe DiffTreeS FilePathS
+filePathPipe :: Monad m => Conduit DiffTreeS m FilePathS
 
-filePathFilter :: Plugin -> Pipe FilePathS FilePathS
+filePathFilter :: Monad m => Plugin -> Conduit FilePathS m FilePathS
 
 -- git checkout
-filePipe :: Pipe FilePathS FileS
+filePipe :: Monad m => Conduit FilePathS m FileS
 
 -- flag change
-pluginsMapperPipe :: Pipe FileS PluginMapperS
+pluginsMapperPipe :: Monad m => Conduit FileS m PluginMapperS
 
-pluginMapperPipe :: Plugin -> Pipe PluginMapperS PluginMapperS
+pluginMapperPipe :: Monad m => Plugin -> Conduit PluginMapperS m PluginMapperS
 
 -- flag change
-pluginsReducerPipe :: Pipe PluginMapperS PluginReducerS
+pluginsReducerPipe :: Monad m => Conduit PluginMapperS m PluginReducerS
 
 -- Better way to bundle (than cycling)
---                           /-> Pipe PluginReducerS PluginReducerS ->\
--- Producer PluginReducerS ----> Pipe PluginReducerS PluginReducerS ---> Pipe PluginReducerS PluginReducerS
---                           \-> Pipe PluginReducerS PluginReducerS ->/
+--                             /-> Conduit PluginReducerS m PluginReducerS ->\
+-- Producer m PluginReducerS ----> Conduit PluginReducerS m PluginReducerS ---> Conduit PluginReducerS m PluginReducerS
+--                             \-> Conduit PluginReducerS m PluginReducerS ->/
 -- That is, producer -fifo> worker reducers -fifo> single reducer
 -- Functions like cat when plugin not in element
-pluginReducerPipe :: Plugin -> Pipe PluginReducerS PluginReducerS
+pluginReducerPipe :: Monad m => Plugin -> Conduit PluginReducerS m PluginReducerS
 
 -- flag change
-resultsPipe :: Pipe PluginS ResultS
+resultsPipe :: Monad m => Conduit PluginS m ResultS
 
 -- folder (probably concat/next/sort)
-resultsReducer :: Producer' ResultS m r -> Results
+resultsReducer :: Monad m => Consumer m ResultS
 
 
 
 
 
 
-
-
-
-
-
-splitterPipe :: Pipe a (a, a)
-splitterPipe = Pipes.Prelude.Map $ join (,)
-
-producerToTQueue :: Producer b m r -> STM (TQueue b)
-
-whileM_ :: Monad m => (a -> m Bool) -> m a -> m a
-whileM_ p x = do
-  y <- x
-  t <- p y
-  if t
-  then do
-    whileM_ p x
-  else do
-    return y
-
-duplicateInput :: Input a -> Output a -> Output a -> STM ()
-duplicateInput input out1 out2 = whileM_ return duplicateOneOutput
-  where
-    duplicateOneOutput = do
-      maybeVal <- recv input
-      case maybeVal of
-        Just x  -> do
-          sent1 <- send out1 x
-          sent2 <- send out2 x
-          return $ sent1 && sent2
-        Nothing -> return False
-
-
-forkProducer :: (Consumer' b m r, Producer' b m r, Producer' b m r)
-forkProducer p = (consumer, producer1, producer2)
-  where
-
-(output0 , input0) <- spawn unlimited
-(output1, input1) <- spawn unlimited
-(output2, input2) <- spawn unlimited
-
-consumer = toOutput output0
-
-duplicateInput input0 output1 output2
-
-producer1 = toInput input1
-producer2 = toInput input2
-
-
-mergeProducers = Pipes.Prelude.zipWith
-
--- idea design for splitter: (from left/right)
---
---
---                                                                      / Producer b1
--- Producer' (Either b1 b2) m r -> Pipe (Either b1 b2) (Either b1 b2) ->
---                              /                                       \
---                              \                                        |
---                               <-Pipe (Either b1 b2) (Either b1 b2) <-/
---                              /
---                   Producer b2
-
-forkPipe :: Pipe a (a, a)
-forkPipe = Pipes.Prelude.map $ join (,)
-
-
-forkPipes :: Pipe a b -> Pipe c d -> Pipe (a, c) (b, d)
-forkPipes
-
-
-detailsProducer :: Producer Details
-commitPipe :: Pipe Details (Details, Commit)
-pluginProducer :: Producer Plugin
-initialSort :: Pipe () (Details, Commit, [Plugin])
-byCommit :: Pipe (Details, Commit, [Plugin]) (Details, Commit, [Plugin])
 
 
 
@@ -244,32 +170,14 @@ predToList p x y | p y       = [x]
 initialSorter :: (a -> b -> Bool) -> [b] -> a -> (a, [b])
 initialSorter p ys x = (x, filter (p x) ys)
 
-pipeInitialSorter :: (a -> b -> Bool) -> [b] -> Pipe a (a, [b])
-pipeInitialSorter p ys = Pipes.Prelude.map $ initialSorter p ys
-
-
 sorter :: (a -> b -> Bool) -> (a, [b]) -> (a, [b])
 sorter p ~(a, bs) = (a, filter (p a) bs)
-
-pipeSorter :: (a -> b -> Bool) -> Pipe (a, [b]) (a, [b])
-pipeSorter p = Pipes.Prelude.map $ sorter p
 
 -- | @maybePred pred x@ applies @pred@ if it's `Just` a predicate
 -- otherwise, it returns `True`
 maybePred :: Maybe (a -> Bool) -> a -> Bool
 maybePred (Just p) x = p x
 maybePred  _       _ = True
-
-commitProducer :: Producer Commit
-
-
-commitSorter :: [Plugin] -> Pipe Commit (Commit, [Plugin])
-commitSorter ps = pipeInitialSorter pred ps
-  where
-    pred c p = maybePred (p^.byCommit) c
-
-diffTreePipe :: Pipe Commit (Commit, DiffTree)
-diffTreePipe = Pipes.Prelude.mapM commitToDiffTrees
 
 
 -- HOW to balance load?
@@ -295,12 +203,6 @@ diffTreePipe = Pipes.Prelude.mapM commitToDiffTrees
 -- processing.
 
 
--- | Very Zen, but in this case, very possibly pointless.
---  (Used to build what's `Wanted` for a plugin.)
-wantNothing :: Wanted
-wantNothing = Want False False False False False n n n n n n n
-  where
-    n = Nothing
 
 
 

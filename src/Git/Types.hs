@@ -20,7 +20,7 @@ module Git.Types (
     , creationMode
     , unmergedMode
     -- * Paths
-    , Path(..)
+    , Path
     ) where
 
 

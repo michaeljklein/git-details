@@ -31,28 +31,13 @@ module Data.Tree.Utils ( forestBranches
                        ) where
 
 
-import Data.DepthElement       ( baseDepth
-                               , forestDepthElements
-                               , treeDepthElements
-                               )
 import Data.List               ( sortBy
                                )
 import Data.List.Utils         ( keepPartition
                                )
-import Data.Text.Builder.Utils ( unlinesb
-                               )
 import Data.Tree               ( Forest
                                , Tree(..)
                                )
-import TextShow                ( TextShow(..)
-                               )
-
-
-instance TextShow a => TextShow (Tree a) where
-  showb = unlinesb . treeDepthElements   baseDepth
-
-instance TextShow a => TextShow (Forest a) where
-  showb = unlinesb . forestDepthElements baseDepth
 
 
 -- | @forestFilter p forest@ returns a list of all the subtrees in @forest@

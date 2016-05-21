@@ -9,9 +9,14 @@ Maintainer  : lambdamichael(at)gmail.com
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Data.DepthElement ( Depth(..)
                          , DepthElement(..)
+                         , DepthElemShow(..)
                          , baseDepth
                          , parseDepthElement
                          , initialSplit
@@ -27,6 +32,8 @@ import Control.Applicative        ( Alternative(..)
 import Data.Monoid                ( (<>)
                                   )
 import Data.Text                  ( Text
+                                  )
+import Data.Text.Builder.Utils    ( unlinesb
                                   )
 import Data.Tree                  ( Forest
                                   , Tree(..)
@@ -121,6 +128,28 @@ initialSplit = split $ keepDelimsL $ whenElt ((Depth 1 ==) . depth)
 -- | Unfold `DepthElement` into a forest
 unfoldDepthTree :: [[DepthElement Text]] -> Forest Text
 unfoldDepthTree = unfoldForest unfolder
+
+
+class ToDepthElements t where
+  type ToDepthElem t
+  toDepthElements      ::          t -> [DepthElement (ToDepthElem t)]
+  depthToDepthElements :: Depth -> t -> [DepthElement (ToDepthElem t)]
+  toDepthElements = depthToDepthElements baseDepth
+  {-# MINIMAL depthToDepthElements #-}
+
+instance ToDepthElements (Forest a) where
+  type ToDepthElem (Forest a) = a
+  depthToDepthElements = forestDepthElements
+
+instance (a ~ a) => ToDepthElements (Tree a) where
+  type ToDepthElem (Tree a) = a
+  depthToDepthElements = treeDepthElements
+
+-- | To make the `TextShow` instance not an orphan
+newtype DepthElemShow a = DepthElemShow { _unDepthElemShow :: a}
+
+instance (TextShow (ToDepthElem t), ToDepthElements t) => TextShow (DepthElemShow t) where
+  showb = unlinesb . toDepthElements . _unDepthElemShow
 
 -- | Convert a forest to a list of `DepthElement`s, given an initial depth
 forestDepthElements :: Depth -> Forest a -> [DepthElement a]

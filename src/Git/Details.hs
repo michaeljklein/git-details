@@ -21,13 +21,11 @@ import Data.Attoparsec.Text ( Parser
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import Data.Text.IO (readFile)
-import Data.Tree (Tree(..))
 import Git.Types (Commit(..), SHA1(..))
 import Git.Types.Parse (parseLogLine)
 import Prelude hiding (readFile)
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.Process.Utils (simpleRun)
-import TextShow (TextShow(..))
 import Data.Git.Details (Details(..))
 import Data.Git.Details.Parse (detailsParser)
 

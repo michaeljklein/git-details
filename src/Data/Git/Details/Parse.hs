@@ -16,8 +16,6 @@ import Data.Attoparsec.Text ( Parser
                             , skipSpace
                             )
 import Data.Attoparsec.Text.Utils (skipChar, skipN, skipLine, takeLine)
-import qualified Data.Map.Strict as Map
-import Git.Types.Parse (parseLogLine)
 import Data.Git.Details (Details(..))
 
 
