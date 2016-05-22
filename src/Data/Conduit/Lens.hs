@@ -7,7 +7,7 @@ maintainer  : lambdamichael(at)gmail.com
 -}
 
 
-module Data.Conduit.Lens ( getterConduit ) where
+module Data.Conduit.Lens ( getterC ) where
 
 
 import Control.Lens.Getter      ( Getting
@@ -24,6 +24,6 @@ import Prelude hiding           ( map
 -- | Given a getter @g@, @getterConduit g@ takes what @g@ gets from as input and
 -- outputs what is gotten by @g@. For example,
 -- @getterConduit _1 :: Conduit (a,b) m a@
-getterConduit :: Monad m => Getting a s a -> Conduit s m a
-getterConduit g = map (^. g)
+getterC :: Monad m => Getting a s a -> Conduit s m a
+getterC g = map (^. g)
 

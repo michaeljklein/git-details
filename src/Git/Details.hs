@@ -25,9 +25,14 @@ import Git.Types (Commit(..), SHA1(..))
 import Git.Types.Parse (parseLogLine)
 import Prelude hiding (readFile)
 import System.Directory (doesDirectoryExist, doesFileExist)
-import System.Process.Utils (simpleRun)
+-- import System.Process.Utils (simpleRun)
 import Data.Git.Details (Details(..))
 import Data.Git.Details.Parse (detailsParser)
+
+import Data.Conduit.Process.Utils
+import Data.ByteString (ByteString)
+-- import qualified Data.ByteString.Lazy as LB (ByteString, fromStrict)
+import Conduit (encodeUtf8C)
 
 -- 1. make sure valid git dir (has .git dir)
 -- 2. get project details: 'git remote show origin'
@@ -51,6 +56,9 @@ import Data.Git.Details.Parse (detailsParser)
 isGitRootDir :: IO Bool
 isGitRootDir = doesDirectoryExist ".git"
 
+isGitRootDir2 :: Producer IO Bool
+isGitRootDir2 = lift $ doesDirectoryExist ".git"
+
 
 -- | Get the details of the @git@ project in the current directory
 projectDetails :: IO (Either String Details)
@@ -59,6 +67,47 @@ projectDetails = do
   case maybeResults of
     Left  err     -> return $ Left err
     Right results -> return . parseOnly detailsParser . T.pack $ results
+
+
+-- procConduit :: Conduit B.ByteString IO Details
+
+-- -- | Note that this is pure, so will (thankfully) never throw
+-- encodeUtf8C :: Conduit B.ByteString m T.Text
+
+-- encodeUtf8C =$= conduitParserEither detailsParser :: Conduit B.ByteString IO (Either ParseError (PositionRange, Details))
+
+-- phDetails = defaultCmd & procConduit .~ (encodeUtf8C =$= conduitParserEither detailsParser) :: ProcessHandler (Either ParseError (PositionRange, Details))
+
+-- yield "git remote show origin" =$= shellConduit =$= processSourceConduit & processHandlerSource phDetails :: Source IO (Maybe (Either ParseError (PositionRange, Details)))
+
+-- t :: Source IO (Maybe (Either ParseError (PositionRange, Details)))
+
+-- maybeToEither t :: Source IO (Either () (Either ParseError (pd)))
+
+-- assocL % :: Source IO (Either (Either () ParseError) (pd))
+
+-- mapLeft toSomeError % :: Source IO (Either SomeError pd)
+
+-- -- | Given a command (`String`) and a `Parser`, return a `Source`
+
+-- singleCmdParse :: String -> Parser a -> Source IO (Either SomeError a)
+
+singleCmdParse' :: String -> Parser a -> Source IO (Either SomeException a)
+singleCmdParse' cmd p = yield cmd =$= shellC =$= processSourceC & processHandlerSource ph
+  where
+    ph = defaultParserPH p
+
+-- | A `ProcessHandler` built from `defaultCmd` and the provider `Text` parser
+defaultParserPH :: Parser a -> ProcessHandler (Either ParseError a)
+defaultParserPH p = defaultCmd & procConduit .~ (encodeUtf8C =$= conduitParserEither p)
+
+-- mapRight the PositionRange out
+-- Merge Nothing and ParseError into a single error
+-- Conduit
+
+
+
+
 
 -- | Check that the current version of the file exists and can be parsed
 checkCurrentFile :: FilePath -> Parser a -> IO Bool

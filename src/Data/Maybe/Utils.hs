@@ -14,3 +14,6 @@ justIfTrue :: Bool -> a -> Maybe a
 justIfTrue True x = Just x
 justIfTrue _    _ = Nothing
 
+-- | `justIfTrue` with arguments flipped
+justIf :: a -> Bool -> Maybe a
+justIf = flip justIfTrue

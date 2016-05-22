@@ -27,12 +27,12 @@ import Prelude hiding           ( map
 
 -- | `await` for a value from each `Source`, outputting `Nothing` when the
 -- `Source` is empty
-awaitConduit :: Monad m => Conduit (Source m a) m (Maybe a)
-awaitConduit = mapM ($$ await)
+awaitC :: Monad m => Conduit (Source m a) m (Maybe a)
+awaitC = mapM ($$ await)
 
 -- | `fuse`, inside of a `Conduit`
-fusingConduit :: (Monad m, Monad n) => Conduit i m o -> Conduit (Source m i) n (Source m o)
-fusingConduit c = map (=$= c)
+fusingC :: (Monad m, Monad n) => Conduit i m o -> Conduit (Source m i) n (Source m o)
+fusingC c = map (=$= c)
 
 -- | Given a `Source` and two `Conduit`s, zip the `Conduits` together, applied
 -- to the `Source`, to make a new `Source`
