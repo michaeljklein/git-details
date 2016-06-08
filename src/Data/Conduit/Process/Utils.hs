@@ -11,33 +11,30 @@ maintainer  : lambdamichael(at)gmail.com
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
--- {-# LANGUAGE RankNTypes #-}
--- {-# LANGUAGE ImpredicativeTypes #-}
--- {-# LANGUAGE KindSignatures #-}
 
 module Data.Conduit.Process.Utils where
 
 import Control.Applicative ((<|>))
 import Control.Concurrent.STM.TBMQueue (newTBMQueueIO)
 import Control.Concurrent.STM.TMQueue (newTMQueueIO)
+import Control.Exception (Exception(..), SomeException)
 import Control.Lens.Operators ((&), (.~), (^.))
 import Control.Lens.TH (makeClassy, makeLenses)
+import Control.Monad (Functor(..), Monad(..), join, mapM)
 import Data.ByteString (ByteString, length, take)
-import Data.Either.Utils (maybeTupEither)
 import Data.Conduit (Conduit, Source, (=$=), runConduit, toConsumer, yield)
-import qualified Data.Conduit.Combinators as C (map, mapM)
 import Data.Conduit.Internal (zipSources)
 import Data.Conduit.Lens ( getterC )
 import Data.Conduit.Process (sourceProcessWithStreams)
 import Data.Conduit.TQueue (sinkTMQueue, sinkTBMQueue, sourceTMQueue, sourceTBMQueue)
 import Data.Conduit.Utils (awaitC, fusingC, zipToSourceWith)
+import Data.Either.Utils (maybeTupEither)
 import Data.Maybe (Maybe(..))
 import Data.Maybe.Utils (justIf)
-import Prelude (Bool(..), IO, Either(..), Eq(..), Ord(..), Show, String, ($), (.), const, id)
+import Prelude (Bool(..), IO, Either(..), Eq(..), Ord(..), Show, String, ($), (.), const, id, uncurry)
 import System.Exit (ExitCode (..))
-import System.Process (CreateProcess, shell)
-import Control.Monad (Functor(..), Monad(..), join, mapM)
-import Control.Exception (Exception(..), SomeException)
+import System.Process (CreateProcess, proc, shell)
+import qualified Data.Conduit.Combinators as C (map, mapM)
 
 
 data ProcessSource = ProcSource { _exitCode :: Source IO ExitCode
@@ -50,7 +47,7 @@ makeLenses ''ProcessSource
 
 data ProcessHandler a = ProcHandler { _goodExit   :: ExitCode   -> IO (Maybe SomeException)
                                     , _goodStderr :: ByteString -> IO (Maybe SomeException)
-                                    , _procC      :: Conduit ByteString IO a
+                                    , _handlerC   :: Conduit ByteString IO a
                                     }
 
 makeClassy ''ProcessHandler
@@ -61,18 +58,22 @@ data StderrException = StderrEx { _stderrDetails :: ByteString
 
 instance Exception StderrException
 
+
 -- | `Source` for a single shell command
 singleCmdS :: String -> Source IO ProcessSource
 singleCmdS cmd = yield cmd =$= shellC =$= processSourceC
 
+singleProcS :: String -> [String] -> Source IO ProcessSource
+singleProcS cmd args = yield (cmd, args) =$= procC =$= processSourceC
+
 -- | This is the default process handler. `_goodExit` is `ExitSuccess`,
 -- `_goodStderr` is @True@ for at most one character input (to prevent
 -- an empty input with a trailing newline from triggering failure), and
--- `_procC` is equivalent to @cat@.
+-- `_handlerC` is equivalent to @cat@.
 defaultCmd :: ProcessHandler ByteString
 defaultCmd = ProcHandler { _goodExit   = \x -> return $ justIf (toException               x) $ x /= ExitSuccess
                          , _goodStderr = \x -> return $ justIf (toException . StderrEx $  x) $ length (take 2 x) < 2
-                         , _procC      = C.map id
+                         , _handlerC   = C.map id
                          }
 
 -- | `defaultCmd`, but considers anything passed to @stderr@ to be
@@ -83,6 +84,11 @@ ignoreStderrCmd = defaultCmd & goodStderr .~ (const $ return Nothing)
 -- | `Conduit` from `String` commands to `CreateProcess`, using `shell`
 shellC :: Monad m => Conduit String m CreateProcess
 shellC = C.map shell
+
+-- | `Conduit` from `String` commands and `[String]` arguments to
+-- `CreateProcess`, using `proc`
+procC :: Monad m => Conduit (String, [String]) m CreateProcess
+procC = C.map $ uncurry proc
 
 -- | Create a process, streaming stdin/stderr out in an asynchronous `TMQueue`.
 -- The `ExitCode` is also streamed out, but in a bounded `TBQueue`. This allows
@@ -142,9 +148,9 @@ goodStderrC ph = getProcessStderr =$= awaitC =$= checkStderr ph
 goodProcessS :: HasProcessHandler p a => p  -> Source IO ProcessSource -> Source IO (Maybe SomeException)
 goodProcessS ph s = zipToSourceWith (<|>) s (goodExitC ph) (goodStderrC ph)
 
--- | A `Conduit` with `ProcessSource` as input that applies `_procC`
+-- | A `Conduit` with `ProcessSource` as input that applies `_handlerC`
 processHandlerC :: HasProcessHandler p a => p -> Conduit ProcessSource IO (Source IO a)
-processHandlerC ph = getProcessStdout =$= fusingC (ph ^. procC)
+processHandlerC ph = getProcessStdout =$= fusingC (ph ^. handlerC)
 
 -- | Use a `ProcessHandler` to convert a `Source` of `ProcessSource`s into
 -- `Source` of `Either` `SomeException` or the resulting `Source`.

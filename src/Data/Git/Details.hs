@@ -8,9 +8,9 @@ Maintainer  : lambdamichael(at)gmail.com
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module Data.Git.Details where
-
-
+module Data.Git.Details ( Details(..)
+                        , emptyDetails
+                        ) where
 import Data.Text (Text)
 
 

@@ -29,10 +29,13 @@ import System.Directory (doesDirectoryExist, doesFileExist)
 import Data.Git.Details (Details(..))
 import Data.Git.Details.Parse (detailsParser)
 
+import Control.Lens.Operators ((.~), (&))
+import Data.Conduit (Conduit, Producer, Source, (=$=), yield)
 import Data.Conduit.Process.Utils
 import Data.ByteString (ByteString)
--- import qualified Data.ByteString.Lazy as LB (ByteString, fromStrict)
-import Conduit (encodeUtf8C)
+import Conduit (encodeUtf8C, lift)
+import Control.Exception.Base (SomeException)
+import Data.Conduit.Attoparsec (ParseError, conduitParserEither)
 
 -- 1. make sure valid git dir (has .git dir)
 -- 2. get project details: 'git remote show origin'
@@ -42,86 +45,45 @@ import Conduit (encodeUtf8C)
 -- 6. for each commit, get and parse -> Data.Map: git show [hash]:[path] > new_path
 -- 7. compile results into single tree
 -- 8. output results
-
 -- -- | `Attribute`s can be unfolded into a `Tree` and otherwise are named values.
 -- data Attribute = Attr { parent :: Maybe Attribute -- ^ The parent attribute. E.g. @test@ might be the parent of @dateTest@.
 --                       , name   :: T.Text          -- ^ The name of the attribute
 --                       , value  :: Maybe (forall a. TextShow a => a) -- ^ The value of the input, which must be a member of the class `TextShow`
 --                       }
--- -- | Convert a list of attributes to a tree of attributes
--- treeify :: [Attribute] -> Tree Attribute
--- treeify = undefined
 
 -- | Check for @.git@ directory in current directory
 isGitRootDir :: IO Bool
 isGitRootDir = doesDirectoryExist ".git"
 
-isGitRootDir2 :: Producer IO Bool
-isGitRootDir2 = lift $ doesDirectoryExist ".git"
+-- isGitRootDir2  --Producer IO Bool
+isGitRootDir2 = undefined --lift $ doesDirectoryExist ".git"
 
 
 -- | Get the details of the @git@ project in the current directory
-projectDetails :: IO (Either String Details)
-projectDetails = do
-  maybeResults <- simpleRun "git" ["remote", "show", "origin"] ""
-  case maybeResults of
-    Left  err     -> return $ Left err
-    Right results -> return . parseOnly detailsParser . T.pack $ results
+-- projectDetails :: IO (Either String Details)
+-- projectDetails = do
+--   maybeResults <- simpleRun "git" ["remote", "show", "origin"] ""
+--   case maybeResults of
+--     Left  err     -> return $ Left err
+--     Right results -> return . parseOnly detailsParser . T.pack $ results
 
 
--- procConduit :: Conduit B.ByteString IO Details
+-- singleCmdParse :: String -> Parser a -> Source IO (Either SomeException a)
+-- singleCmdParse c p = yield c =$= shellC =$= processSourceC & processHandlerS ph
+--   where
+--     ph = defaultParserPH p
 
--- -- | Note that this is pure, so will (thankfully) never throw
--- encodeUtf8C :: Conduit B.ByteString m T.Text
+-- -- | A `ProcessHandler` built from `defaultCmd` and the provider `Text` parser
+-- defaultParserPH :: Parser a -> ProcessHandler (Either ParseError a)
+-- defaultParserPH p = defaultCmd & procC .~ (encodeUtf8C =$= conduitParserEither p)
 
--- encodeUtf8C =$= conduitParserEither detailsParser :: Conduit B.ByteString IO (Either ParseError (PositionRange, Details))
-
--- phDetails = defaultCmd & procConduit .~ (encodeUtf8C =$= conduitParserEither detailsParser) :: ProcessHandler (Either ParseError (PositionRange, Details))
-
--- yield "git remote show origin" =$= shellConduit =$= processSourceConduit & processHandlerSource phDetails :: Source IO (Maybe (Either ParseError (PositionRange, Details)))
-
--- t :: Source IO (Maybe (Either ParseError (PositionRange, Details)))
-
--- maybeToEither t :: Source IO (Either () (Either ParseError (pd)))
-
--- assocL % :: Source IO (Either (Either () ParseError) (pd))
-
--- mapLeft toSomeError % :: Source IO (Either SomeError pd)
-
--- -- | Given a command (`String`) and a `Parser`, return a `Source`
-
--- singleCmdParse :: String -> Parser a -> Source IO (Either SomeError a)
-
-singleCmdParse' :: String -> Parser a -> Source IO (Either SomeException a)
-singleCmdParse' cmd p = yield cmd =$= shellC =$= processSourceC & processHandlerSource ph
-  where
-    ph = defaultParserPH p
-
--- | A `ProcessHandler` built from `defaultCmd` and the provider `Text` parser
-defaultParserPH :: Parser a -> ProcessHandler (Either ParseError a)
-defaultParserPH p = defaultCmd & procConduit .~ (encodeUtf8C =$= conduitParserEither p)
-
--- mapRight the PositionRange out
--- Merge Nothing and ParseError into a single error
--- Conduit
+-- projectDetailsS :: Source IO (Either SomeException Details)
+-- projectDetailsS = singleCmdParse "git remote show origin" detailsParser
 
 
 
 
-
--- | Check that the current version of the file exists and can be parsed
-checkCurrentFile :: FilePath -> Parser a -> IO Bool
-checkCurrentFile path parser = do
-  exists <- doesFileExist path
-  if exists
-  then do
-    contents <- readFile path
-    case parser `parseOnly` contents of
-      Right _  -> return True
-      _        -> return False
-  else do
-    return False
-
+{-
 -- | Given a filepath (relative to the root directory of the branch) and a
 -- `Commit`, return its contents or return `Nothing` on failure
 getFileInCommit :: FilePath -> Commit -> IO (Either String T.Text)
@@ -178,7 +140,16 @@ getCommits = do
     Right results -> return . parseOnly (many $ parseLogLine <* endOfInput) . T.pack $ results
 
 
-
-
--- 7. compile results into single tree
--- 8. output results
+-- | Check that the current version of the file exists and can be parsed
+checkCurrentFile :: FilePath -> Parser a -> IO Bool
+checkCurrentFile path parser = do
+  exists <- doesFileExist path
+  if exists
+  then do
+    contents <- readFile path
+    case parser `parseOnly` contents of
+      Right _  -> return True
+      _        -> return False
+  else do
+    return False
+-}

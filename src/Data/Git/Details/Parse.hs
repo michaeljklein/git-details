@@ -6,10 +6,8 @@ License     : BSD3
 Maintainer  : lambdamichael(at)gmail.com
 -}
 
-module Data.Git.Details.Parse where
+module Data.Git.Details.Parse (detailsParser) where
 
-
--- import Control.Monad
 import Data.Attoparsec.Text ( Parser
                             , endOfInput
                             , manyTill
